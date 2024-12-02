@@ -47,6 +47,8 @@ jobs:
         git config --global user.name "jie-fu170"
         git add ./mysql_latest.tar
         git commit -m "Add MySQL Docker image tar file"
-        git push https://{PAT}@github.com/Jie-Fu170/GithubActionSample.git
+        git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
+        git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
+        git push origin main
       env:
         PAT: ${{ secrets.PAT }}

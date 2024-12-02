@@ -28,3 +28,13 @@ jobs:
 
     - name: List files in the repository
       run: ls -la
+      
+    - name: Commit and push tar file
+      run: |
+        git config --global user.email "170225345@qq.com"
+        git config --global user.name "jie-fu170"
+        git add ./mysql_latest.tar
+        git commit -m "Add MySQL Docker image tar file"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

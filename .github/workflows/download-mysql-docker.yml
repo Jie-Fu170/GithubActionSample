@@ -28,6 +28,18 @@ jobs:
 
     - name: List files in the repository
       run: ls -la
+
+    - name: Install Git LFS
+      run: |
+        sudo apt-get update
+        sudo apt-get install git-lfs
+        git lfs install
+
+    - name: Track tar files using Git LFS
+      run: |
+        git lfs track "*.tar"
+        git add .gitattributes
+        git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
       
     - name: Commit and push tar file
       run: |

@@ -1,4 +1,4 @@
-name: Download MySQL Docker Image
+name: Download Docker Image
 
 on:
   workflow_dispatch:
@@ -20,25 +20,25 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Pull MySQL Docker image
-      run: docker pull mysql:latest
+    - name: Pull Docker image
+      run: docker pull alpine
 
     - name: Save Docker image to file
-      run: docker save mysql:latest -o ./mysql_latest.tar
+      run: docker save alpine -o ./alpine.tar
 
     - name: List files in the repository
       run: ls -la
       
-    - name: Create example.txt file
-      run: echo "This is an example file." > example.txt
+    # - name: Create example.txt file
+    #   run: echo "This is an example file." > example.txt
 
-    - name: Commit and push txt file
-      run: |
-        git config --global user.email "170225345@qq.com"
-        git config --global user.name "jie-fu170"
-        git add example.txt
-        git commit -m "Add example.txt file"
-        git push
+    # - name: Commit and push txt file
+    #   run: |
+    #     git config --global user.email "170225345@qq.com"
+    #     git config --global user.name "jie-fu170"
+    #     git add example.txt
+    #     git commit -m "Add example.txt file"
+    #     git push
     # - name: Install Git LFS
     #   run: |
     #     sudo apt-get update
@@ -51,15 +51,16 @@ jobs:
     #     git add .gitattributes
     #     git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
       
-    # - name: Commit and push tar file
-    #   run: |
-    #     git config --global user.email "170225345@qq.com"
-    #     git config --global user.name "jie-fu170"
-    #     git add ./mysql_latest.tar
-    #     git commit -m "Add MySQL Docker image tar file"
-    #     git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
-    #     git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
-    #     git push origin main
+    - name: Commit and push tar file
+      run: |
+        git config --global user.email "170225345@qq.com"
+        git config --global user.name "jie-fu170"
+        git add ./alpine.tar
+        git commit -m "Add Docker image tar file"
+        # git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
+        # git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
+        # git push origin main
+        git push
       env:
         PAT: ${{ secrets.PAT }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

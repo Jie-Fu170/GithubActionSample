@@ -28,27 +28,38 @@ jobs:
 
     - name: List files in the repository
       run: ls -la
-
-    - name: Install Git LFS
-      run: |
-        sudo apt-get update
-        sudo apt-get install git-lfs
-        git lfs install
-
-    - name: Track tar files using Git LFS
-      run: |
-        git lfs track "*.tar"
-        git add .gitattributes
-        git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
       
-    - name: Commit and push tar file
+    - name: Create example.txt file
+      run: echo "This is an example file." > example.txt
+
+    - name: Commit and push txt file
       run: |
         git config --global user.email "170225345@qq.com"
         git config --global user.name "jie-fu170"
-        git add ./mysql_latest.tar
-        git commit -m "Add MySQL Docker image tar file"
-        git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
-        git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
-        git push origin main
+        git add example.txt
+        git commit -m "Add example.txt file"
+        git push
+    # - name: Install Git LFS
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install git-lfs
+    #     git lfs install
+
+    # - name: Track tar files using Git LFS
+    #   run: |
+    #     git lfs track "*.tar"
+    #     git add .gitattributes
+    #     git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
+      
+    # - name: Commit and push tar file
+    #   run: |
+    #     git config --global user.email "170225345@qq.com"
+    #     git config --global user.name "jie-fu170"
+    #     git add ./mysql_latest.tar
+    #     git commit -m "Add MySQL Docker image tar file"
+    #     git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
+    #     git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
+    #     git push origin main
       env:
         PAT: ${{ secrets.PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

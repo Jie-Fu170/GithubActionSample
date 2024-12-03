@@ -21,10 +21,10 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Pull Docker image
-      run: docker pull alpine
+      run: docker pull mysql
 
     - name: Save Docker image to file
-      run: docker save alpine -o ./alpine.tar
+      run: docker save mysql -o ./mysql.tar
 
     - name: List files in the repository
       run: ls -la
@@ -50,17 +50,25 @@ jobs:
     #     git lfs track "*.tar"
     #     git add .gitattributes
     #     git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
-      
-    - name: Commit and push tar file
+
+    - name: Upload file to Dropbox
       run: |
-        git config --global user.email "170225345@qq.com"
-        git config --global user.name "jie-fu170"
-        git add ./alpine.tar
-        git commit -m "Add Docker image tar file"
-        # git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
-        # git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
-        # git push origin main
-        git push
+        curl -X POST https://content.dropboxapi.com/2/files/upload \
+        --header "Authorization: Bearer ${{ secrets.DROPBOX_ACCESS_TOKEN }}" \
+        --header "Dropbox-API-Arg: {\"path\": \"/mysql.tar\",\"mode\": \"add\",\"autorename\": true,\"mute\": false}" \
+        --header "Content-Type: application/octet-stream" \
+        --data-binary @mysql.tar
+        
+    # - name: Commit and push tar file
+    #   run: |
+    #     git config --global user.email "170225345@qq.com"
+    #     git config --global user.name "jie-fu170"
+    #     git add ./alpine.tar
+    #     git commit -m "Add Docker image tar file"
+    #     # git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
+    #     # git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
+    #     # git push origin main
+    #     git push
       env:
         PAT: ${{ secrets.PAT }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

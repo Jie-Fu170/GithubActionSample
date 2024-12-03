@@ -1,0 +1,29 @@
+name: Upload to Alibaba Cloud OSS
+
+on:
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  upload-to-oss:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Create example.txt file
+      run: echo "This is an example file." > example.txt
+
+    - name: Set up Python environment
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        pip install oss2
+
+    - name: Upload file to OSS
+      run: |
+        source env/bin/activate
+        python upload_to_oss.py
+      env:
+        OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+        OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}

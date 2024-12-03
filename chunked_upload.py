@@ -5,8 +5,8 @@ import os
 ACCESS_TOKEN = os.getenv('DROPBOX_ACCESS_TOKEN')
 
 # File to be uploaded
-file_path = 'large_file.tar'
-dropbox_path = '/large_file.tar'
+file_path = 'mysql.tar'
+dropbox_path = '/mysql.tar'
 
 # Chunk size (in bytes)
 CHUNK_SIZE = 4 * 1024 * 1024  # 4MB

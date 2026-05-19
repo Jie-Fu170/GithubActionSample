@@ -27,60 +27,46 @@ jobs:
       run: docker save mysql -o ./mysql.tar
 
     - name: List files in the repository
-      run: ls -la
+      run: ls -lh ./mysql.tar
+
+    - name: Upload to Cloudflare R2
+      run: |
+        pip install boto3
+        python3 << 'EOF'
+        import boto3
+        import os
+        from datetime import datetime
+        
+        # R2 configuration
+        account_id = "${{ secrets.R2_ACCOUNT_ID }}"
+        access_key = "${{ secrets.R2_ACCESS_KEY_ID }}"
+        secret_key = "${{ secrets.R2_SECRET_ACCESS_KEY }}"
+        bucket_name = "${{ secrets.R2_BUCKET_NAME }}"
+        
+        # Create S3 client for R2
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name='auto'
+        )
+        
+        # Upload file
+        file_path = './mysql.tar'
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        object_key = f'mysql_{timestamp}.tar'
+        
+        print(f'Uploading {file_path} to R2 as {object_key}...')
+        s3_client.upload_file(file_path, bucket_name, object_key)
+        print(f'Upload successful! File: {object_key}')
+        EOF
+
+    - name: Clean up local file
+      run: rm -f ./mysql.tar
       
-    # - name: Create example.txt file
-    #   run: echo "This is an example file." > example.txt
-
-    # - name: Commit and push txt file
-    #   run: |
-    #     git config --global user.email "170225345@qq.com"
-    #     git config --global user.name "jie-fu170"
-    #     git add example.txt
-    #     git commit -m "Add example.txt file"
-    #     git push
-    # - name: Install Git LFS
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install git-lfs
-    #     git lfs install
-
-    # - name: Track tar files using Git LFS
-    #   run: |
-    #     git lfs track "*.tar"
-    #     git add .gitattributes
-    #     git commit -m "Add Git LFS tracking for tar files" || echo "No changes to .gitattributes"
-    
-    - name: Set up Python environment
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        pip install dropbox
-
-    - name: Upload large file to Dropbox
-      run: |
-        source env/bin/activate
-        python chunked_upload.py
-        
-    # - name: Upload file to Dropbox
-    #   run: |
-    #     curl -X POST https://content.dropboxapi.com/2/files/upload \
-    #     --header "Authorization: Bearer ${{ secrets.DROPBOX_ACCESS_TOKEN }}" \
-    #     --header "Dropbox-API-Arg: {\"path\": \"/mysql.tar\",\"mode\": \"add\",\"autorename\": true,\"mute\": false}" \
-    #     --header "Content-Type: application/octet-stream" \
-    #     --data-binary @mysql.tar
-        
-    # - name: Commit and push tar file
-    #   run: |
-    #     git config --global user.email "170225345@qq.com"
-    #     git config --global user.name "jie-fu170"
-    #     git add ./alpine.tar
-    #     git commit -m "Add Docker image tar file"
-    #     # git config lfs.https://github.com/Jie-Fu170/GithubActionSample.git/info/lfs.locksverify false
-    #     # git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/Jie-Fu170/GithubActionSample.git
-    #     # git push origin main
-    #     git push
       env:
-        PAT: ${{ secrets.PAT }}
-        DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}

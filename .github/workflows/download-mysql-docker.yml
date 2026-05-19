@@ -1,72 +1,63 @@
-name: Download Docker Image
+name: Backup Docker Image to R2
 
 on:
   workflow_dispatch:
+    inputs:
+      image:
+        description: "Docker image name (e.g. mysql:8.0)"
+        required: true
+        default: "mysql:latest"
 
 jobs:
-  download-mysql:
+  backup:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Pull Docker image
-      run: docker pull mysql
+      run: |
+        docker pull ${{ github.event.inputs.image }}
 
-    - name: Save Docker image to file
-      run: docker save mysql -o ./mysql.tar
+    - name: Save + compress image
+      run: |
+        IMAGE_NAME=$(echo "${{ github.event.inputs.image }}" | tr '/' '_' | tr ':' '_')
+        docker save ${{ github.event.inputs.image }} | gzip > ${IMAGE_NAME}.tar.gz
+        echo "FILE=${IMAGE_NAME}.tar.gz" >> $GITHUB_ENV
 
-    - name: List files in the repository
-      run: ls -lh ./mysql.tar
-
-    - name: Upload to Cloudflare R2
+    - name: Upload to R2
       run: |
         pip install boto3
+
         python3 << 'EOF'
-        import boto3
-        import os
+        import boto3, os
         from datetime import datetime
-        
-        # R2 configuration
+
         account_id = "${{ secrets.R2_ACCOUNT_ID }}"
         access_key = "${{ secrets.R2_ACCESS_KEY_ID }}"
         secret_key = "${{ secrets.R2_SECRET_ACCESS_KEY }}"
-        bucket_name = "${{ secrets.R2_BUCKET_NAME }}"
-        
-        # Create S3 client for R2
-        s3_client = boto3.client(
-            's3',
-            endpoint_url=f'https://{account_id}.r2.cloudflarestorage.com',
+        bucket = "${{ secrets.R2_BUCKET_NAME }}"
+        file_path = os.environ["FILE"]
+
+        endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            region_name='auto'
+            region_name="auto"
         )
-        
-        # Upload file
-        file_path = './mysql.tar'
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        object_key = f'mysql_{timestamp}.tar'
-        
-        print(f'Uploading {file_path} to R2 as {object_key}...')
-        s3_client.upload_file(file_path, bucket_name, object_key)
-        print(f'Upload successful! File: {object_key}')
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        object_key = f"docker/{timestamp}_{file_path}"
+
+        print("Uploading:", file_path)
+        s3.upload_file(file_path, bucket, object_key)
+        print("Done:", object_key)
         EOF
 
-    - name: Clean up local file
-      run: rm -f ./mysql.tar
-      
-      env:
-        R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-        R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-        R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+    - name: Cleanup
+      run: |
+        rm -f *.tar.gz

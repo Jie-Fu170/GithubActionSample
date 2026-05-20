@@ -8,9 +8,9 @@ on:
         required: true
         default: "91meidusha,T_Twife"
       max_videos:
-        description: "Max videos per user"
+        description: "Max items to scan per user (includes images and skipped)"
         required: false
-        default: "10"
+        default: "200"
       date_after:
         description: "Only videos after this date (YYYYMMDD, inclusive)"
         required: false

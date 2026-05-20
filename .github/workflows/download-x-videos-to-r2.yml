@@ -1,0 +1,111 @@
+name: Download X Videos to R2
+
+on:
+  workflow_dispatch:
+    inputs:
+      usernames:
+        description: "X usernames (comma-separated, without @)"
+        required: true
+        default: "91meidusha,T_Twife"
+      max_videos:
+        description: "Max videos per user"
+        required: false
+        default: "10"
+      date_after:
+        description: "Only videos after this date (YYYYMMDD, inclusive)"
+        required: false
+      date_before:
+        description: "Only videos before this date (YYYYMMDD, inclusive)"
+        required: false
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: pip install yt-dlp boto3
+
+    - name: Download and upload videos
+      env:
+        USERNAMES: ${{ github.event.inputs.usernames }}
+        MAX_VIDEOS: ${{ github.event.inputs.max_videos }}
+        DATE_AFTER: ${{ github.event.inputs.date_after }}
+        DATE_BEFORE: ${{ github.event.inputs.date_before }}
+        X_COOKIES: ${{ secrets.X_COOKIES }}
+        R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+        R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+        R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+      run: |
+        # Write cookies file if provided
+        if [ -n "$X_COOKIES" ]; then
+          echo "$X_COOKIES" > cookies.txt
+          COOKIE_ARG="--cookies cookies.txt"
+        else
+          COOKIE_ARG=""
+        fi
+
+        # Build date filter args
+        DATE_ARGS=""
+        [ -n "$DATE_AFTER" ]  && DATE_ARGS="$DATE_ARGS --dateafter $DATE_AFTER"
+        [ -n "$DATE_BEFORE" ] && DATE_ARGS="$DATE_ARGS --datebefore $DATE_BEFORE"
+
+        # Loop over each username
+        IFS=',' read -ra USERS <<< "$USERNAMES"
+        for RAW_USER in "${USERS[@]}"; do
+          USER=$(echo "$RAW_USER" | tr -d ' ')
+          echo "========== Downloading: @$USER =========="
+          mkdir -p "downloads/$USER"
+
+          yt-dlp \
+            $COOKIE_ARG \
+            $DATE_ARGS \
+            --playlist-end "$MAX_VIDEOS" \
+            --output "downloads/$USER/%(upload_date)s_%(id)s.%(ext)s" \
+            --format "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
+            --merge-output-format mp4 \
+            --no-warnings \
+            --ignore-errors \
+            "https://x.com/$USER/media"
+
+          echo "Files for @$USER:"
+          ls -lh "downloads/$USER/" || echo "  No files"
+        done
+
+        # Upload all to R2
+        python3 << 'EOF'
+        import boto3, os, glob
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            region_name="auto"
+        )
+        bucket = os.environ["R2_BUCKET_NAME"]
+
+        files = glob.glob("downloads/**/*.mp4", recursive=True) + \
+                glob.glob("downloads/**/*.mkv", recursive=True)
+
+        if not files:
+            print("No video files to upload.")
+            exit(0)
+
+        for file_path in files:
+            # preserve downloads/{username}/filename structure as x-videos/{username}/filename
+            rel = os.path.relpath(file_path, "downloads")
+            object_key = f"x-videos/{rel}"
+            print(f"Uploading: {file_path} -> {object_key}")
+            s3.upload_file(file_path, bucket, object_key)
+
+        print(f"\nTotal uploaded: {len(files)} file(s)")
+        EOF
+
+    - name: Cleanup
+      if: always()
+      run: rm -rf downloads/ cookies.txt

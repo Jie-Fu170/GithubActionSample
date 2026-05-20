@@ -56,7 +56,7 @@ jobs:
 
         try:
             s3.download_file(bucket, "x-videos/.archive", "archive.txt")
-            with open("archive.txt") as f:
+            with open("archive.txt", "rb") as f:
                 count = sum(1 for _ in f)
             print(f"Restored archive with {count} entries")
         except s3.exceptions.ClientError as e:
@@ -135,7 +135,7 @@ jobs:
         # Always save archive back to R2
         if os.path.exists("archive.txt"):
             s3.upload_file("archive.txt", bucket, "x-videos/.archive")
-            with open("archive.txt") as f:
+            with open("archive.txt", "rb") as f:
                 count = sum(1 for _ in f)
             print(f"Archive saved ({count} total entries)")
         EOF

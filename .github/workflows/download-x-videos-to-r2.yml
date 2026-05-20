@@ -27,7 +27,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: pip install yt-dlp boto3
+      run: pip install gallery-dl boto3
 
     - name: Download and upload videos
       env:
@@ -41,19 +41,6 @@ jobs:
         R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
       run: |
-        # Write cookies file if provided
-        if [ -n "$X_COOKIES" ]; then
-          echo "$X_COOKIES" > cookies.txt
-          COOKIE_ARG="--cookies cookies.txt"
-        else
-          COOKIE_ARG=""
-        fi
-
-        # Build date filter args
-        DATE_ARGS=""
-        [ -n "$DATE_AFTER" ]  && DATE_ARGS="$DATE_ARGS --dateafter $DATE_AFTER"
-        [ -n "$DATE_BEFORE" ] && DATE_ARGS="$DATE_ARGS --datebefore $DATE_BEFORE"
-
         # Loop over each username
         IFS=',' read -ra USERS <<< "$USERNAMES"
         for RAW_USER in "${USERS[@]}"; do
@@ -61,15 +48,30 @@ jobs:
           echo "========== Downloading: @$USER =========="
           mkdir -p "downloads/$USER"
 
-          yt-dlp \
-            $COOKIE_ARG \
-            $DATE_ARGS \
-            --playlist-end "$MAX_VIDEOS" \
-            --output "downloads/$USER/%(upload_date)s_%(id)s.%(ext)s" \
-            --format "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" \
-            --merge-output-format mp4 \
-            --no-warnings \
-            --ignore-errors \
+          # Build gallery-dl config
+          CONFIG_ARGS=""
+          if [ -n "$X_COOKIES" ]; then
+            echo "$X_COOKIES" > cookies.txt
+            CONFIG_ARGS="$CONFIG_ARGS --cookies cookies.txt"
+          fi
+
+          # gallery-dl date filter: --filter for upload_date range
+          FILTER=""
+          if [ -n "$DATE_AFTER" ] && [ -n "$DATE_BEFORE" ]; then
+            FILTER="--filter \"'$DATE_AFTER' <= date.strftime('%Y%m%d') <= '$DATE_BEFORE'\""
+          elif [ -n "$DATE_AFTER" ]; then
+            FILTER="--filter \"date.strftime('%Y%m%d') >= '$DATE_AFTER'\""
+          elif [ -n "$DATE_BEFORE" ]; then
+            FILTER="--filter \"date.strftime('%Y%m%d') <= '$DATE_BEFORE'\""
+          fi
+
+          eval gallery-dl \
+            $CONFIG_ARGS \
+            $FILTER \
+            --range "1-$MAX_VIDEOS" \
+            --directory "downloads/$USER" \
+            --filename "{date:%Y%m%d}_{tweet_id}_{num}.{extension}" \
+            --filter-videos \
             "https://x.com/$USER/media"
 
           echo "Files for @$USER:"

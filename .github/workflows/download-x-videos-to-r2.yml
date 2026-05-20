@@ -17,6 +17,14 @@ on:
       date_before:
         description: "Only videos before this date (YYYYMMDD, inclusive)"
         required: false
+      include_retweets:
+        description: "Include reposted (retweeted) videos"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
 
 jobs:
   download:
@@ -27,6 +35,7 @@ jobs:
       MAX_VIDEOS: ${{ github.event.inputs.max_videos }}
       DATE_AFTER: ${{ github.event.inputs.date_after }}
       DATE_BEFORE: ${{ github.event.inputs.date_before }}
+      INCLUDE_RETWEETS: ${{ github.event.inputs.include_retweets }}
       X_COOKIES: ${{ secrets.X_COOKIES }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -91,6 +100,13 @@ jobs:
           echo "========== Downloading: @$USER =========="
           mkdir -p "downloads/$USER"
 
+          # use timeline URL to include retweets, media-only URL otherwise
+          if [ "$INCLUDE_RETWEETS" = "true" ]; then
+            FETCH_URL="https://x.com/$USER"
+          else
+            FETCH_URL="https://x.com/$USER/media"
+          fi
+
           eval gallery-dl \
             $COOKIE_ARG \
             $FILTER \
@@ -98,7 +114,7 @@ jobs:
             --range "1-$MAX_VIDEOS" \
             --directory "downloads/$USER" \
             --filename "{date:%Y%m%d}_{tweet_id}_{num}.{extension}" \
-            "https://x.com/$USER/media"
+            "$FETCH_URL"
 
           echo "Files for @$USER:"
           ls -lh "downloads/$USER/" || echo "  No new files"

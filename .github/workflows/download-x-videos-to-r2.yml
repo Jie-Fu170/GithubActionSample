@@ -112,12 +112,14 @@ jobs:
             $FILTER \
             --download-archive archive.txt \
             --range "1-$MAX_VIDEOS" \
+            --sleep 2-10 \
             --directory "downloads/$USER" \
             --filename "{date:%Y%m%d}_{tweet_id}_{num}.{extension}" \
             "$FETCH_URL"
 
           echo "Files for @$USER:"
           ls -lh "downloads/$USER/" || echo "  No new files"
+          sleep 10
         done
 
     - name: Upload videos and archive to R2

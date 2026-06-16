@@ -1,0 +1,77 @@
+name: Download Ollama to R2
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: "File URL to download"
+        required: true
+        default: "https://ollama.com/download/OllamaSetup.exe"
+      target_path:
+        description: "Target path in R2 bucket"
+        required: true
+        default: "ollama/"
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+
+    env:
+      FILE_URL: ${{ github.event.inputs.file_url }}
+      TARGET_PATH: ${{ github.event.inputs.target_path }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: pip install boto3
+
+    - name: Download file
+      run: |
+        echo "Downloading: $FILE_URL"
+        wget -O downloaded_file "$FILE_URL"
+        ls -lh downloaded_file
+        echo "Download completed"
+
+    - name: Upload to R2
+      run: |
+        python3 << 'EOF'
+        import boto3, os
+
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+            region_name="auto"
+        )
+        bucket = os.environ["R2_BUCKET_NAME"]
+        target_path = os.environ["TARGET_PATH"]
+
+        # Get filename from downloaded file
+        file_path = "downloaded_file"
+        file_size = os.path.getsize(file_path)
+        
+        # Extract filename from URL if needed
+        import urllib.parse
+        url = os.environ["FILE_URL"]
+        parsed = urllib.parse.urlparse(url)
+        filename = os.path.basename(parsed.path)
+        if not filename or '.' not in filename:
+            filename = "downloaded_file"
+        
+        object_key = f"{target_path}{filename}"
+        
+        print(f"Uploading: {file_path} ({file_size} bytes) -> {object_key}")
+        s3.upload_file(file_path, bucket, object_key)
+        print(f"Successfully uploaded to R2")
+        EOF
+
+    - name: Cleanup
+      if: always()
+      run: rm -f downloaded_file

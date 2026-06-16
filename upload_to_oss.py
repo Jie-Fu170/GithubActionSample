@@ -5,7 +5,7 @@ import os
 access_key_id = os.getenv('OSS_ACCESS_KEY_ID')
 access_key_secret = os.getenv('OSS_ACCESS_KEY_SECRET')
 bucket_name = 'fc-sd-79a08c16w'
-endpoint = 'oss-cn-beijing.aliyuncs.com'
+endpoint = 'oss-cn-hangzhou.aliyuncs.com'
 
 # 初始化 OSS 配置
 auth = oss2.Auth(access_key_id, access_key_secret)

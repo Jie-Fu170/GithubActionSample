@@ -15,6 +15,8 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
     - name: Checkout code
@@ -47,9 +49,19 @@ jobs:
         bucket_name = os.getenv('OSS_BUCKET_NAME')
         endpoint = os.getenv('OSS_ENDPOINT')
         
-        # 初始化 OSS 配置
+        # 验证必要的配置信息
+        if not all([access_key_id, access_key_secret, bucket_name, endpoint]):
+            raise ValueError("Missing required OSS configuration: OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_BUCKET_NAME, or OSS_ENDPOINT")
+        
+        # 清理endpoint - 移除多余的 https:// 前缀（如果有的话）
+        if endpoint.startswith('https://'):
+            endpoint = endpoint[8:]
+        elif endpoint.startswith('http://'):
+            endpoint = endpoint[7:]
+        
+        # 初始化 OSS 配置 - endpoint 不需要添加 https://，oss2.Bucket 会自动处理
         auth = oss2.Auth(access_key_id, access_key_secret)
-        bucket = oss2.Bucket(auth, f'https://{endpoint}', bucket_name)
+        bucket = oss2.Bucket(auth, endpoint, bucket_name)
         
         # 获取下载的文件信息
         file_path = 'downloaded_file'
@@ -66,6 +78,7 @@ jobs:
         object_name = f"{target_path}{filename}"
         
         print(f"Uploading: {file_path} ({file_size} bytes) -> {object_name}")
+        print(f"OSS Endpoint: {endpoint}")
         
         # 上传文件到 OSS
         bucket.put_object_from_file(object_name, file_path)

@@ -4,7 +4,7 @@ import os
 # 阿里云 OSS 配置信息
 access_key_id = os.getenv('OSS_ACCESS_KEY_ID')
 access_key_secret = os.getenv('OSS_ACCESS_KEY_SECRET')
-bucket_name = 'fc-sd-79a08c16w'
+bucket_name = 'bus-upload'
 endpoint = 'oss-cn-hangzhou.aliyuncs.com'
 
 # 初始化 OSS 配置
